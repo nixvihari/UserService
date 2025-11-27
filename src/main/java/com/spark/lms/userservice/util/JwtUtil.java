@@ -1,79 +1,73 @@
 package com.spark.lms.userservice.util;
 
-import org.springframework.stereotype.Component;
-
-
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.stereotype.Component;
 
-import java.security.Key;
+import javax.crypto.SecretKey;
 import java.util.Date;
-import java.util.function.Function;
-
+import java.util.UUID;
 
 @Component
 public class JwtUtil {
 
-   
-    private static final String SECRET_KEY =
-            "ThisIsASecretKeyForJwtTokenGeneration12345";
+    // SAME KEY USED IN API GATEWAY
+    private final SecretKey key = Keys.hmacShaKeyFor(
+            "MySecretKeyForJWTTokenGenerationNeedsToBeLongEnough".getBytes()
+    );
 
-    private final Key key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+    // Token validity: 24 hours
+    private final long validityInMillis = 24 * 60 * 60 * 1000;
 
+    // Generate JWT token
+    public String generateToken(UUID userId, String email, String role) {
 
-    public String generateToken(String username, String role) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + validityInMillis);
+
         return Jwts.builder()
-                .setSubject(username)            
-                .claim("role", role)               
-                .setIssuedAt(new Date())           
-                .setExpiration(new Date(System.currentTimeMillis() + 86400000)) 
+                .setSubject(email)
+                .claim("userId", userId.toString())
+                .claim("role", role)
+                .setIssuedAt(now)
+                .setExpiration(expiry)
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-   
-    public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
+    // Validate token
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parserBuilder()
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(token);
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
     }
 
-    
-
-    public String extractUserRole(String token) {
-        return extractAllClaims(token).get("role", String.class);
-    }
-
-  
-    public boolean validateToken(String token, String username) {
-        final String extractedUser = extractUsername(token);
-        return (extractedUser.equals(username) && !isTokenExpired(token));
-    }
-
-  
-
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
-
-    
-
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
-    }
-
-   
-
-    private Claims extractAllClaims(String token) {
+    // Extract Claims
+    public Claims getClaims(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(key) 
+                .setSigningKey(key)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
+    }
+
+    public String extractEmail(String token) {
+        return getClaims(token).getSubject();
+    }
+
+    public String extractUserId(String token) {
+        return getClaims(token).get("userId", String.class);
+    }
+
+    public String extractRole(String token) {
+        return getClaims(token).get("role", String.class);
     }
 }
