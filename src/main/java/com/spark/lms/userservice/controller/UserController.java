@@ -12,7 +12,11 @@ public class UserController {
 
     private final UserService userService;
 
-    @PostMapping("/register")
+    public UserController(UserService userService) {
+		this.userService = userService;
+	}
+
+	@PostMapping("/register")
     public UserResponse register(@RequestBody RegisterRequest req) {
         return userService.register(req);
     }

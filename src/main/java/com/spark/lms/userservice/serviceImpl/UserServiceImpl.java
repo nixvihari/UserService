@@ -18,72 +18,81 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
-    private final UserRepository userRepo;
-    private final JwtUtil jwtUtil;
-    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+	private final UserRepository userRepo;
+	private final JwtUtil jwtUtil;
+	private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-    // -----------------------------
-    // Register User
-    // -----------------------------
-    @Override
-    public UserResponse register(RegisterRequest req) {
-        if (userRepo.findByEmail(req.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already exists!");
-        }
+	public UserServiceImpl(UserRepository userRepo, JwtUtil jwtUtil) {
+		super();
+		this.userRepo = userRepo;
+		this.jwtUtil = jwtUtil;
+	}
 
-        User user = User.builder()
-                .email(req.getEmail())
-                .name(req.getName())
-                .hashedPassword(encoder.encode(req.getPassword()))
-                .role(req.getRole())
-                .build();
+	// -----------------------------
+	// Register User
+	// -----------------------------
+	@Override
+	public UserResponse register(RegisterRequest req) {
+		if (userRepo.findByEmail(req.getEmail()).isPresent()) {
+			throw new RuntimeException("Email already exists!");
+		}
 
-        userRepo.save(user);
+		User user = new User();
+		user.setEmail(req.getEmail());
+		user.setName(req.getName());
+		user.setHashedPassword(encoder.encode(req.getPassword()));
+		user.setRole(req.getRole());
 
-        return UserResponse.builder()
-                .id(user.getId().toString())
-                .email(user.getEmail())
-                .name(user.getName())
-                .role(user.getRole())
-                .build();
-    }
+		userRepo.save(user);
 
-    // -----------------------------
-    // Login User (returns JWT)
-    // -----------------------------
-    @Override
-    public LoginResponse login(LoginRequest req) {
-        User user = userRepo.findByEmail(req.getEmail())
-                .orElseThrow(() -> new UserNotFoundException("Email not registered!"));
+		UserResponse response = new UserResponse();
+		response.setId(user.getId().toString());
+		response.setEmail(user.getEmail());
+		response.setName(user.getName());
+		response.setRole(user.getRole());
 
-        if (!encoder.matches(req.getPassword(), user.getHashedPassword())) {
-            throw new InvalidPasswordException("Incorrect password!");
-        }
+		return response;
 
-        // Generate JWT token
-        String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole());
+	}
 
-        return new LoginResponse(
-                user.getId(),
-                user.getEmail(),
-                user.getRole(),
-                token
-        );
-    }
+	// -----------------------------
+	// Login User (returns JWT)
+	// -----------------------------
+	@Override
+	public LoginResponse login(LoginRequest req) {
+		User user = userRepo.findByEmail(req.getEmail())
+				.orElseThrow(() -> new UserNotFoundException("Email not registered!"));
 
-    // -----------------------------
-    // Get User by ID
-    // -----------------------------
-    @Override
-    public UserResponse getUserById(String id) {
-        User user = userRepo.findById(UUID.fromString(id))
-                .orElseThrow(() -> new RuntimeException("User not found!"));
+		if (!encoder.matches(req.getPassword(), user.getHashedPassword())) {
+			throw new InvalidPasswordException("Incorrect password!");
+		}
 
-        return UserResponse.builder()
-                .id(user.getId().toString())
-                .email(user.getEmail())
-                .name(user.getName())
-                .role(user.getRole())
-                .build();
-    }
+		// Generate JWT token
+		String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole());
+
+		return new LoginResponse(
+				user.getId(),
+				user.getEmail(),
+				user.getRole(),
+				token
+				);
+	}
+
+	// -----------------------------
+	// Get User by ID
+	// -----------------------------
+	@Override
+	public UserResponse getUserById(String id) {
+		User user = userRepo.findById(UUID.fromString(id))
+				.orElseThrow(() -> new RuntimeException("User not found!"));
+
+		UserResponse response = new UserResponse();
+		response.setId(user.getId().toString());
+		response.setEmail(user.getEmail());
+		response.setName(user.getName());
+		response.setRole(user.getRole());
+		
+		return response;
+
+	}
 }
