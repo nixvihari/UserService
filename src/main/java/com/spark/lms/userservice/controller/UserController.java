@@ -5,6 +5,7 @@ import com.spark.lms.userservice.service.UserService;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,6 +33,14 @@ public class UserController {
     }
 
     // Accessible by any authenticated user
+    
+    @GetMapping("/getUserProfile")
+    public ResponseEntity<UserResponse> getUserProfile(
+    		@RequestHeader("X-Role") String role,
+    		@RequestHeader("X-User-Id") String uuidString) {
+    	return ResponseEntity.ok(userService.getUserById(uuidString));
+    }
+    
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getUser(
             @PathVariable String id
